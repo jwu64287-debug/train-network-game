@@ -709,7 +709,6 @@
     .fil27 {fill:#D4A066}
     .fil23 {fill:#FFCC99}
     .fil1 {fill:white}
-    circle[data-station-name] {opacity:0;pointer-events:none}
     .fnt1 {font-weight:normal;font-size:1.999843px;font-family:'宋体'}
     .fnt0 {font-weight:normal;font-size:2.999906px;font-family:'宋体'}
   </style>
