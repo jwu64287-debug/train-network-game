@@ -44,7 +44,7 @@
     .line-order{display:flex;align-items:center;justify-content:space-between;margin-top:10px;padding-top:9px;border-top:1px solid #314955}.line-order span{font-size:11px;color:#a9bbc4}.line-order div{display:flex;gap:6px}.line-order button{border:1px solid #45616c;background:#132b35;color:#e5f3f5;border-radius:7px;padding:5px 9px;cursor:pointer;font-size:11px}.line-order button:hover:not(:disabled){border-color:var(--gold);color:var(--gold)}.line-order button:disabled{opacity:.35;cursor:not-allowed}
     .route.service-segment{stroke-width:2.2;stroke-dasharray:none;animation:none;opacity:1;stroke-linecap:butt;stroke-linejoin:round;filter:none}.ferry-service{fill:none;stroke-width:1.4;stroke-dasharray:2 2.4;stroke-linecap:butt;pointer-events:none;opacity:1;filter:none}.linecard-head b,.linecard small{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.linecard-head b{min-width:0;margin-right:8px}.linecard-head .pill{flex:none}.linecard small{font-size:12px}.palette-details{margin:10px 0 4px;border:1px solid #314955;border-radius:10px;background:#0b171e}.palette-details summary{display:flex;align-items:center;gap:9px;padding:10px 12px;cursor:pointer;font-size:12px;color:#dbe9ed;list-style:none}.palette-details summary::-webkit-details-marker{display:none}.palette-details summary::after{content:'展开';margin-left:auto;color:#9db7c1}.palette-details[open] summary::after{content:'收起'}.palette-preview{width:18px;height:18px;border-radius:50%;border:1px solid #ffffff88;flex:none}.palette-details .palette-row,.palette-details .palette-swatches{margin-left:12px;margin-right:12px}.upgradebox .color-swatch{width:28px;height:28px;min-height:28px;margin-top:0;padding:0;flex:none}
     #network .station circle.outer,#network .station circle.inner{display:none}
-    .service-line-visual{opacity:.64;pointer-events:none}.service-line-visual path{fill:none;stroke-width:1.55;stroke-linecap:square;stroke-linejoin:round}.service-line-visual .ferry-service{stroke-width:1.4;stroke-linecap:butt}
+    .service-corridor{fill:none;stroke-width:1.55;stroke-linecap:round;stroke-linejoin:round;stroke-opacity:.58;pointer-events:stroke;cursor:pointer}.service-corridor.shared{stroke:#567586;stroke-width:1.7;stroke-opacity:.68}.service-corridor:hover{stroke-opacity:.95}.service-corridor.ferry-service{stroke-width:1.4;stroke-dasharray:2 2.4;stroke-linecap:butt;pointer-events:stroke}.route-preview{fill:none;stroke-width:2.2;stroke-opacity:.9;stroke-linecap:round;stroke-linejoin:round;pointer-events:none;display:none}
     .welcome{position:fixed;inset:0;z-index:4000;display:grid;align-items:end;background:linear-gradient(90deg,#06111df2 0%,#071522bb 39%,#07152211 80%),linear-gradient(0deg,#06111dee 0%,transparent 48%),url('rail-hero.png') center center/cover no-repeat #071522;transition:opacity .5s,visibility .5s}.welcome.hidden{opacity:0;visibility:hidden;pointer-events:none}.welcome-inner{max-width:680px;padding:clamp(28px,6vw,80px);padding-bottom:clamp(42px,9vh,100px)}.welcome-kicker{color:#ffd87b;font-size:12px;font-weight:800;letter-spacing:.24em}.welcome h1{font-size:clamp(42px,7vw,84px);letter-spacing:.08em;line-height:1.1;margin:18px 0 14px;text-shadow:0 8px 35px #000b}.welcome p{color:#d7e4e9;font-size:clamp(14px,1.6vw,18px);line-height:1.8;max-width:560px}.welcome-actions{display:flex;align-items:center;gap:18px;margin-top:26px}.welcome-start{border:0;border-radius:12px;padding:14px 26px;background:linear-gradient(135deg,#ffe291,#ecb641);color:#15222b;font-weight:900;cursor:pointer;box-shadow:0 10px 30px #0007}.welcome-start:disabled{opacity:.6;cursor:wait}.welcome-status{color:#bdcdd3;font-size:12px}.welcome-credit{position:absolute;right:20px;bottom:14px;color:#d9e4e9b8;font-size:10px;letter-spacing:.04em}@media(max-width:760px){.welcome{background-position:62% center}.welcome-inner{padding:28px}.welcome h1{font-size:44px}}
     .welcome::before{content:"";position:absolute;inset:0;background:linear-gradient(90deg,#06111df2 0%,#071522bb 39%,#07152211 80%),linear-gradient(0deg,#06111dee 0%,transparent 48%),url('rail-hub.png') center center/cover no-repeat;opacity:0;animation:welcomeScenes 14s ease-in-out infinite;pointer-events:none}.welcome-inner{position:relative;z-index:1}.welcome-credit{position:absolute;z-index:1}@keyframes welcomeScenes{0%,38%,100%{opacity:0}52%,86%{opacity:1}}@media(prefers-reduced-motion:reduce){.welcome::before{animation:none}}
   </style>
@@ -231,41 +231,78 @@ function planTrainDepartures(){
 }
 const drawLinesWithoutHeadway=drawLines;drawLines=function(){trainRenderCache=[];drawLinesWithoutHeadway();planTrainDepartures();svg.querySelectorAll('.service-train').forEach(train=>{train.dataset.depart=scheduledDeparture(+train.dataset.line,+train.dataset.pair,+train.dataset.reverse)});rebuildTrainRenderCache();renderTrainPositions()}
 renderTrainPositions=function(){if(!trainRenderCache.length&&svg.querySelector('.service-train'))rebuildTrainRenderCache();trainRenderCache.forEach(({train,lineIndex,path,length})=>{let line=state.lines[lineIndex];if(!line||!train.isConnected){trainRenderCache=[];return}let travel=Math.max(1,line.travelMinutes||60*line.dist/line.effectiveSpeed),elapsed=state.clock-(+train.dataset.depart);if(elapsed<0)elapsed+=1440;if(elapsed<0||elapsed>travel){train.style.display='none';return}let reverse=train.dataset.reverse==='1',fraction=motionProgress(line,reverse?travel-elapsed:elapsed),position=length*fraction,point=path.getPointAtLength(position),before=path.getPointAtLength(Math.max(0,position-.8)),after=path.getPointAtLength(Math.min(length,position+.8)),angle=Math.atan2(after.y-before.y,after.x-before.x)*180/Math.PI+90+(reverse?180:0);train.setAttribute('transform',`translate(${point.x} ${point.y}) rotate(${angle})`);train.style.setProperty('--train-color',line.color||'#20b8d8');train.style.display=''})};
-function offsetRailPoints(points,shift){return points.map((point,i)=>{let before=points[Math.max(0,i-1)],after=points[Math.min(points.length-1,i+1)],dx=after.x-before.x,dy=after.y-before.y,length=Math.hypot(dx,dy)||1;return`${(point.x-dy/length*shift).toFixed(2)},${(point.y+dx/length*shift).toFixed(2)}`})}
 const drawLinesWithoutFerryOverlay=drawLines;
 drawLines=function(){
   drawLinesWithoutFerryOverlay();
   const routes=state.lines.map(line=>plannedRailRoute(line.stops||[line.ai,line.bi]));
-  const owners=new Map;
+  const corridors=new Map;
   routes.forEach((route,lineIndex)=>route?.edges.forEach((edge,edgeIndex)=>{
     const a=route.stationPath[edgeIndex],b=route.stationPath[edgeIndex+1],key=a<b?`${a}-${b}`:`${b}-${a}`;
-    if(!owners.has(key))owners.set(key,[]);
-    owners.get(key).push(lineIndex);
+    if(!corridors.has(key))corridors.set(key,{key,edge,from:a,to:b,lines:[]});
+    corridors.get(key).lines.push(lineIndex);
   }));
   state.lines.forEach((line,lineIndex)=>{
-    const route=routes[lineIndex],base=svg.querySelector(`.service-path[data-line="${lineIndex}"]`);
-    if(!route||!base)return;
-    base.style.stroke='none';
-    const group=document.createElementNS(NS,'g');
-    group.setAttribute('class','built service-line-visual');
-    group.dataset.line=lineIndex;
-    route.edges.forEach((edge,edgeIndex)=>{
-      const a=route.stationPath[edgeIndex],b=route.stationPath[edgeIndex+1],key=a<b?`${a}-${b}`:`${b}-${a}`;
-      const shared=owners.get(key),lane=shared.indexOf(lineIndex),shift=(lane-(shared.length-1)/2)*1.65*(a<b?1:-1);
-      const segment=document.createElementNS(NS,'path');
-      segment.setAttribute('class',edge.ferry?'ferry-service':'service-segment');
-      segment.setAttribute('stroke',line.color);
-      segment.setAttribute('d','M'+offsetRailPoints(edge.pts,shift).join(' L'));
-      group.appendChild(segment);
-    });
-    svg.insertBefore(group,svg.querySelector('.station')||svg.firstChild);
+    const base=svg.querySelector(`.service-path[data-line="${lineIndex}"]`);
+    if(routes[lineIndex]&&base)base.style.stroke='none';
   });
+  const anchor=svg.querySelector('.station')||svg.firstChild;
+  const groups=new Map;
+  corridors.forEach(corridor=>{
+    const signature=`${corridor.edge.ferry?'ferry':'rail'}:${corridor.lines.join(',')}`;
+    if(!groups.has(signature))groups.set(signature,[]);
+    groups.get(signature).push(corridor);
+  });
+  function drawCorridor(points,{edge,lines}){
+    const segment=document.createElementNS(NS,'path'),shared=lines.length>1;
+    segment.setAttribute('class',`built service-corridor${shared?' shared':''}${edge.ferry?' ferry-service':''}`);
+    segment.setAttribute('stroke',shared?'#567586':state.lines[lines[0]].color);
+    segment.setAttribute('d','M'+points.map(point=>`${point.x.toFixed(2)},${point.y.toFixed(2)}`).join(' L'));
+    const title=document.createElementNS(NS,'title');
+    title.textContent=shared?`共线 ${lines.length} 条：${lines.map(i=>state.lines[i].name).join('、')}`:state.lines[lines[0]].name;
+    segment.appendChild(title);
+    segment.onclick=event=>{
+      event.stopPropagation();
+      if(lines.length===1)return openLine(lines[0]);
+      showDrawer(`共线区段 · ${lines.length} 条线路`,'<p style="color:var(--muted);font-size:13px;line-height:1.6">这段轨道只绘制一次。选择线路可查看其完整走向与运营详情。</p><div id="corridorRoutes" class="vehicle-list"></div>');
+      const list=$('#corridorRoutes');
+      lines.forEach(i=>{let button=document.createElement('button');button.className='secondary';button.textContent=state.lines[i].name;button.onclick=()=>openLine(i);list.appendChild(button)});
+    };
+    svg.insertBefore(segment,anchor);
+  }
+  groups.forEach(entries=>{
+    const adjacency=new Map,visited=new Set;
+    entries.forEach(entry=>[entry.from,entry.to].forEach(node=>{
+      if(!adjacency.has(node))adjacency.set(node,[]);
+      adjacency.get(node).push(entry);
+    }));
+    function walk(first,start){
+      let entry=first,node=start,points=[];
+      while(entry&&!visited.has(entry.key)){
+        visited.add(entry.key);
+        const oriented=node===entry.from?entry.edge.pts:[...entry.edge.pts].reverse();
+        if(points.length&&Math.hypot(points.at(-1).x-oriented[0].x,points.at(-1).y-oriented[0].y)<.01)points.push(...oriented.slice(1));
+        else points.push(...oriented);
+        node=node===entry.from?entry.to:entry.from;
+        const adjacent=adjacency.get(node)||[];
+        entry=adjacent.length===2?adjacent.find(candidate=>!visited.has(candidate.key)):null;
+      }
+      if(points.length>1)drawCorridor(points,first);
+    }
+    entries.forEach(entry=>{if(visited.has(entry.key))return;let fromDegree=adjacency.get(entry.from).length,toDegree=adjacency.get(entry.to).length;if(fromDegree!==2||toDegree!==2)walk(entry,fromDegree!==2?entry.from:entry.to)});
+    entries.forEach(entry=>{if(!visited.has(entry.key))walk(entry,entry.from)});
+  });
+  const preview=document.createElementNS(NS,'path');
+  preview.setAttribute('class','built route-preview');
+  preview.id='routePreview';
+  svg.insertBefore(preview,anchor);
 };
+function previewRoute(lineIndex){let preview=$('#routePreview'),line=state.lines[lineIndex];if(!preview)return;if(!line){preview.style.display='none';return}preview.setAttribute('d',pathFor(line));preview.setAttribute('stroke',line.color);preview.style.display='block'}
 function trainStatuses(l){let first=timeMinutes(l.first),last=timeMinutes(l.last),pairs=Math.max(1,Math.min(24,+l.freq||1)),count=pairs*2,travel=Math.max(1,l.dist/Math.max(1,l.effectiveSpeed)*60),route=l.routeStations||l.stops||[l.ai,l.bi],out=[],lineIndex=Math.max(0,state.lines.indexOf(l));for(let i=0;i<count;i++){let pair=Math.floor(i/2),reverse=i%2===1,dep=first+(pairs===1?0:(last-first)*pair/(pairs-1))+dispatchOffset(lineIndex,reverse),elapsed=state.clock-dep;if(elapsed<0)elapsed+=1440;if(elapsed>travel)continue;let progress=Math.min(1,elapsed/travel);if(reverse)progress=1-progress;let ri=Math.min(route.length-1,Math.max(0,Math.round(progress*(route.length-1)))),station=stations[route[ri]],hh=String(Math.floor(dep/60)%24).padStart(2,'0'),mm=String(Math.round(dep%60)).padStart(2,'0');out.push({number:`${String(pair+1).padStart(2,'0')}${reverse?'返':'去'}`,depart:`${hh}:${mm}`,position:station?.n||'区间运行',progress:Math.round(progress*100),reverse})}return out}
 trainStatuses=function(line){let first=timeMinutes(line.first),last=timeMinutes(line.last),pairs=Math.max(1,Math.min(24,+line.freq||1)),travel=Math.max(1,line.travelMinutes||60*line.dist/line.effectiveSpeed),route=line.routeStations||line.stops||[line.ai,line.bi],out=[],lineIndex=Math.max(0,state.lines.indexOf(line));for(let i=0;i<pairs*2;i++){let pair=Math.floor(i/2),reverse=i%2===1,depart=scheduledDeparture(lineIndex,pair,reverse),elapsed=state.clock-depart;if(elapsed<0)elapsed+=1440;if(elapsed>travel)continue;let fraction=motionProgress(line,reverse?travel-elapsed:elapsed),ri=Math.min(route.length-1,Math.max(0,Math.round(fraction*(route.length-1)))),station=stations[route[ri]],hh=String(Math.floor(depart/60)%24).padStart(2,'0'),mm=String(Math.round(depart%60)).padStart(2,'0');out.push({number:`${String(pair+1).padStart(2,'0')}${reverse?'返':'去'}`,depart:`${hh}:${mm}`,position:station?.n||'区间运行',progress:Math.round(elapsed/travel*100),reverse})}return out};
 function renderUI(){ $('#cash').textContent='¥ '+state.cash.toFixed(2)+' 亿';$('#profit').textContent=(state.profit>=0?'+ ':'- ')+'¥'+fmt(Math.abs(state.profit),0)+' 万';$('#profit').className=state.profit>=0?'up':'';$('#passengers').textContent=fmt(state.pax,0)+' 人';$('#reputation').textContent=state.rep;let box=$('#lineList');if(!state.lines.length){box.innerHTML='<div class="empty">暂无自营线路<br/>从左侧选择两座城市开始建设</div>';return}box.innerHTML=state.lines.map((l,i)=>{let running=trainStatuses(l).length;return`<div class="linecard" data-line="${i}"><div class="linecard-head"><b><i style="display:inline-block;width:9px;height:9px;background:${l.color};border-radius:50%;margin-right:6px"></i>${l.name}</b><span class="pill">在途 ${running} 列</span></div><small>${l.a.n} ⇄ ${l.b.n} · ${fmt(l.dist,0)} km · ${l.cars}节/${l.seats}座</small><small>${trackSpecs[l.trackLevel].name} · ${l.onTime||98}%准点</small><div class="bar"><i style="width:${Math.min(100,l.demand/(l.seatCap||1)*100)}%"></i></div></div>`}).join('');box.querySelectorAll('[data-line]').forEach(x=>x.onclick=()=>openLine(+x.dataset.line))}
 function moveLine(from,to){if(!Number.isInteger(from)||!Number.isInteger(to)||from<0||from>=state.lines.length||to<0||to>=state.lines.length||from===to)return false;let [line]=state.lines.splice(from,1);state.lines.splice(to,0,line);drawLines();renderUI();persist();toast(`“${line.name}”已调整为第 ${to+1} 位`);return true}
 const renderUIWithOrderBase=renderUI;renderUI=function(){renderUIWithOrderBase();$('#lineList').querySelectorAll('.linecard').forEach(card=>{let i=+card.dataset.line,controls=document.createElement('div');controls.className='line-order';controls.innerHTML=`<span>第 ${i+1} 位 · 点击卡片查看详情</span><div><button type="button" data-shift="-1" aria-label="将第 ${i+1} 位线路上移" ${i===0?'disabled':''}>↑ 上移</button><button type="button" data-shift="1" aria-label="将第 ${i+1} 位线路下移" ${i===state.lines.length-1?'disabled':''}>↓ 下移</button></div>`;card.appendChild(controls);controls.querySelectorAll('button').forEach(button=>button.onclick=e=>{e.stopPropagation();moveLine(i,i+(+button.dataset.shift))})})};
+const renderUIWithRoutePreview=renderUI;renderUI=function(){renderUIWithRoutePreview();$('#lineList').querySelectorAll('.linecard').forEach(card=>{card.onmouseenter=()=>previewRoute(+card.dataset.line);card.onmouseleave=()=>previewRoute(-1)})};
 function closeOperatingDay(){let daily=0,pax=0;state.lines.forEach(l=>{let variance=.88+Math.random()*.24,util=l.demand/(l.seatCap||1),congest=Math.max(0,util-.86);l.delay=Math.round(congest*55+Math.random()*4);l.onTime=Math.max(62,Math.round(99-l.delay*.7));let actual=Math.round(l.demand*variance*(l.onTime/100));pax+=actual;daily+=l.daily*variance-l.delay*.7});state.pax+=pax;state.profit=daily;state.cash+=daily/10000;if(daily<0)state.rep=Math.max(0,state.rep-1)}
 function updateClockLabel(){let dt=new Date(2035,2,1+state.day),hh=String(Math.floor(state.clock/60)).padStart(2,'0'),mm=String(Math.floor(state.clock%60)).padStart(2,'0');$('#dateLabel').textContent=`${dt.getFullYear()}年 ${dt.getMonth()+1}月 ${dt.getDate()}日 ${hh}:${mm}`}
 let lastFrame=performance.now(),clockElapsed=0,uiElapsed=0,saveElapsed=0;
